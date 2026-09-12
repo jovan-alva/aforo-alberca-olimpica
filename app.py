@@ -155,6 +155,10 @@ with tab1:
     else:
         st.dataframe(df_hist, use_container_width=True)
 
+
+with tab2:
+    st.subheader("📊 Dashboard En Vivo")
+    st.info("⚠️ Esta sección está en desarrollo y se actualizará próximamente con visualizaciones en tiempo real.")
     # ---------------------------------------------------------
     # 📊 TOTAL DE USUARIOS POR HORA (Desglose individual)
     # ---------------------------------------------------------
@@ -175,17 +179,18 @@ with tab1:
         cursor.execute(query)
         registros_por_hora = cursor.fetchall()
         conn.close()
-    
-    if registros_por_hora:
-        cols = st.columns(len(registros_por_hora))
-        for i, (hora, total) in enumerate(registros_por_hora):
-            with cols[i]:
-                st.metric(label=f"⏰ {hora}", value=f"{total} usuarios")
-    else:
-        st.info("ℹ️ Aún no hay registros guardados hoy para mostrar el desglose por hora".) 
-with tab2:
-    st.subheader("📊 Dashboard En Vivo")
-    st.info("⚠️ Esta sección está en desarrollo y se actualizará próximamente con visualizaciones en tiempo real.")
+
+        if registros_por_hora:
+            # Mostramos cada hora con su total en tarjetas de métrica
+            cols = st.columns(len(registros_por_hora))
+            for i, (hora, total) in enumerate(registros_por_hora):
+                with cols[i]:
+                    st.metric(label=f"⏰ {hora}", value=f"{total} usuarios")
+        else:
+            st.info("ℹ️ Aún no hay registros guardados hoy para mostrar el desglose por hora.")
+            
+    except Exception as e:
+        st.error(f"Error al obtener el total por hora: {e}")
 
 with tab3:
     st.subheader("📈 Tendencias Mensuales e Historico")

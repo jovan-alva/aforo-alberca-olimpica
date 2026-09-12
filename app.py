@@ -165,7 +165,7 @@ with tab2:
     st.divider()
     st.subheader("📊 Total de Usuarios por Hora")
 
-    try:
+ 
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         
@@ -176,21 +176,9 @@ with tab2:
             GROUP BY hora 
             ORDER BY hora ASC;
         """
-        cursor.execute(query)
-        registros_por_hora = cursor.fetchall()
+        df_total_usuarios = pd.read_sql_query(query, conn)
         conn.close()
-
-        if registros_por_hora:
-            # Mostramos cada hora con su total en tarjetas de métrica
-            cols = st.columns(len(registros_por_hora))
-            for i, (hora, total) in enumerate(registros_por_hora):
-                with cols[i]:
-                    st.metric(label=f"⏰ {hora}", value=f"{total} usuarios")
-        else:
-            st.info("ℹ️ Aún no hay registros guardados hoy para mostrar el desglose por hora.")
-            
-    except Exception as e:
-        st.error(f"Error al obtener el total por hora: {e}")
+        return df_total_usuarios
 
 with tab3:
     st.subheader("📈 Tendencias Mensuales e Historico")

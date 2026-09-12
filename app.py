@@ -159,24 +159,7 @@ with tab1:
 with tab2:
     st.subheader("📊 Dashboard En Vivo")
     st.info("⚠️ Esta sección está en desarrollo y se actualizará próximamente con visualizaciones en tiempo real.")
-    # ---------------------------------------------------------
-    # 📊 TOTAL DE USUARIOS POR HORA (Desglose individual)
-    # ---------------------------------------------------------
-    st.divider()
-    st.subheader("📊 Total de Usuarios por Hora")
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-        
-        # Consultamos la suma de asistentes agrupada por cada hora
-    query = """
-            SELECT hora, SUM(asistentes) AS total_hora 
-            FROM registro_aforo 
-            GROUP BY hora 
-            ORDER BY hora ASC;
-        """
-     df_total_usuarios = pd.read_sql_query(query, conn)
-     conn.close()
-     return df_total_usuario
+  
 
 
 with tab3:

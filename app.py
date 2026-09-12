@@ -183,13 +183,7 @@ with tab1:
                 with cols[i]:
                     st.metric(label=f"⏰ {hora}", value=f"{total} usuarios")
         else:
-            st.info("ℹ️ Aún no hay registros guardados hoy para mostrar el desglose por hora.")
-            
-        except Exception as e:
-            st.error(f"Error al obtener el total por hora: {e}")
-
-
-
+            st.info("ℹ️ Aún no hay registros guardados hoy para mostrar el desglose por hora.
 with tab2:
     st.subheader("📊 Dashboard En Vivo")
     st.info("⚠️ Esta sección está en desarrollo y se actualizará próximamente con visualizaciones en tiempo real.")

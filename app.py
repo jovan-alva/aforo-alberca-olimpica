@@ -166,7 +166,7 @@ with tab2:
     def obtener_total():
         conexion = sqlite3.connect(DB_FILE)
         query = """
-            SELECT hora, SUM(asistentes) AS total_hora 
+            SELECT fecha_hora, SUM(asistentes) AS total_hora 
             FROM registro_aforo 
             GROUP BY hora 
             ORDER BY hora ASC;

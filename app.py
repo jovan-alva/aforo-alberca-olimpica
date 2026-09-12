@@ -175,15 +175,14 @@ with tab1:
         cursor.execute(query)
         registros_por_hora = cursor.fetchall()
         conn.close()
-
-        if registros_por_hora:
-            # Mostramos cada hora con su total en tarjetas de métrica
-            cols = st.columns(len(registros_por_hora))
-            for i, (hora, total) in enumerate(registros_por_hora):
-                with cols[i]:
-                    st.metric(label=f"⏰ {hora}", value=f"{total} usuarios")
-        else:
-            st.info("ℹ️ Aún no hay registros guardados hoy para mostrar el desglose por hora".) 
+    
+    if registros_por_hora:
+        cols = st.columns(len(registros_por_hora))
+        for i, (hora, total) in enumerate(registros_por_hora):
+            with cols[i]:
+                st.metric(label=f"⏰ {hora}", value=f"{total} usuarios")
+    else:
+        st.info("ℹ️ Aún no hay registros guardados hoy para mostrar el desglose por hora".) 
 with tab2:
     st.subheader("📊 Dashboard En Vivo")
     st.info("⚠️ Esta sección está en desarrollo y se actualizará próximamente con visualizaciones en tiempo real.")

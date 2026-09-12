@@ -185,8 +185,8 @@ with tab1:
         else:
             st.info("ℹ️ Aún no hay registros guardados hoy para mostrar el desglose por hora.")
             
-     except Exception as e:
-        st.error(f"Error al obtener el total por hora: {e}")
+        except Exception as e:
+            st.error(f"Error al obtener el total por hora: {e}")
 
 
 

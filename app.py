@@ -155,35 +155,9 @@ with tab1:
     else:
         st.dataframe(df_hist, use_container_width=True)
 
-
 with tab2:
     st.subheader("📊 Dashboard En Vivo")
     st.info("⚠️ Esta sección está en desarrollo y se actualizará próximamente con visualizaciones en tiempo real.")
-    
-    st.divider()
-    st.subheader("Total asistencias por hora")
-
-    def obtener_total():
-        conexion = sqlite3.connect(DB_FILE)
-        query = """
-            SELECT fecha_hora, SUM(asistentes) AS total_hora 
-            FROM registro_aforo 
-            GROUP BY hora 
-            ORDER BY hora ASC;
-              
-        """
-        df_total = pd.read_sql_query(query, conexion)
-        conexion.close()
-        return df_total
-
-    # Mostramos la tabla unida con JOIN en la pantalla
-    df_tot = obtener_total()
-
-    if df_tot.empty:
-        st.info("ℹ️ Aún no hay registros almacenados en la base de datos.")
-    else:
-        st.dataframe(df_tot, use_container_width=True)
-
 
 with tab3:
     st.subheader("📈 Tendencias Mensuales e Historico")
@@ -205,3 +179,4 @@ with tab3:
             )
     except FileNotFoundError:
         st.error("⚠️ No se encontró el archivo de base de datos para descargar.")
+

@@ -8,53 +8,42 @@ st.set_page_config(page_title="Control de Aforo - Alberca Olimpica", page_icon="
 
 st.title("Control de Aforo - Alberca Olimpica Francisco Márquez")
 
-tab1, tab2, tab3 = st.tabs([
+tab1, tab2, tab3, tab4 = st.tabs([
     "📊 Registro de Aforo", 
     "📊 Dashboard En Vivo", 
-    "📈 Tendencias Mensuales e Historico"])
+    "📈 Tendencias Mensuales e Historico",
+    "Grupo Especificos por Hora"])
 with tab1:
     st.subheader("Registro de Aforo por Turno y Espacio")
-    st.subheader("1. Selecciona el Turno y Espacio")
-
+    st.subheader("Selecciona el Turno y Espacio")
+        
     col1, col2, col3 = st.columns(3)
-
+            
     with col1:
         dia_sel=st.selectbox("📅Dia:", ["SABADO", "DOMINGO"])
-
+            
     with col2:
         horarios_disponibles = ["06:00", "07:00", "08:00", "09:00", "10:00", "12:00", "13:00"]
         hora_sel = st.selectbox("⏰ Hora:", horarios_disponibles)
-
+            
     with col3:
         espacio_sel = st.selectbox("🏊‍♂️ Espacio:", ["OLIMPICA", "CALENTAMIENTO", "FOSA"])
 
-    st.info(f"📍 Consultando plantilla para: **{dia_sel}** a las **{hora_sel} hrs** en **{espacio_sel}**")
-
     def obtener_plantilla(dia, hora, espacio):
-        conexion = sqlite3.connect(DB_FILE)
-        query = """
-            SELECT id, carril, profesor, nivel 
-            FROM horario_oficial 
-            WHERE dia = ? AND hora = ? AND espacio = ?;
-        """
-        df = pd.read_sql_query(query, conexion, params=(dia, hora, espacio))
-        conexion.close()
-        return df
-
-    # Cargamos la tabla filtrada
+            conexion = sqlite3.connect(DB_FILE)
+            query = """
+                SELECT id, carril, profesor, nivel 
+                FROM horario_oficial 
+                WHERE dia = ? AND hora = ? AND espacio = ?;
+                """
+            df = pd.read_sql_query(query, conexion, params=(dia, hora, espacio))
+            conexion.close()
+            return df
     df_plantilla = obtener_plantilla(dia_sel, hora_sel, espacio_sel)
-
-    st.subheader("2. Registro de Asistencia por Carril")
-
-    if df_plantilla.empty:
-        st.warning("⚠️ No hay registros programados en la plantilla para este espacio u horario.")
-    else:
-        # Mostramos la plantilla oficial en la pantalla
-        st.dataframe(df_plantilla[['carril', 'profesor', 'nivel']], use_container_width=True)
-
+            
     # --- BLOQUE 3: FORMULARIO DE CONTEO Y SATURACIÓN ---
     st.divider()
-    st.subheader("3. Captura de Aforo y Nivel de Saturación")
+    st.subheader("Captura de Aforo y Nivel de Saturación")
 
     # 1. Definimos la capacidad máxima dinámica según el espacio seleccionado
     if espacio_sel == "OLIMPICA":
@@ -180,3 +169,50 @@ with tab3:
     except FileNotFoundError:
         st.error("⚠️ No se encontró el archivo de base de datos para descargar.")
 
+with tab4:
+    st.subheader("📊 Grupos Especificos por Hora")
+    st.subheader("Selecciona el Turno y Espacio")
+
+    col1_tab2, col2_tab2, col3_tab2 = st.columns(3)
+    
+    with col1_tab2:
+        dia_sel_tab2 = st.selectbox(
+            "📅 Día:", 
+            ["SABADO", "DOMINGO"], 
+            key="dia_tab2"
+        )
+            
+    with col2_tab2:
+        horarios_disponibles = ["06:00", "07:00", "08:00", "09:00", "10:00", "12:00", "13:00"]
+        hora_sel_tab2 = st.selectbox(
+            "⏰ Hora:", 
+            horarios_disponibles, 
+            key="hora_tab2"
+        )
+            
+    with col3_tab2:
+        espacio_sel_tab2 = st.selectbox(
+            "🏊‍♂️ Espacio:", 
+            ["OLIMPICA", "CALENTAMIENTO", "FOSA"], 
+            key="espacio_tab2"
+        )
+    
+    
+    def obtener_plantilla2(dia, hora, espacio):
+                conexion = sqlite3.connect(DB_FILE)
+                query = """
+                    SELECT id, carril, profesor, nivel 
+                    FROM horario_oficial 
+                    WHERE dia = ? AND hora = ? AND espacio = ?;
+                    """
+                df = pd.read_sql_query(query, conexion, params=(dia, hora, espacio))
+                conexion.close()
+                return df
+    df_plantilla2 = obtener_plantilla2(dia_sel_tab2, hora_sel_tab2, espacio_sel_tab2)
+    st.subheader("Grupo de Carriles y Profesores Programados en la Plantilla Oficial")
+    
+    if df_plantilla2.empty:
+        st.warning("⚠️ No hay registros programados en la plantilla para este espacio u horario.")
+    else:
+            # Mostramos la plantilla oficial en la pantalla
+        st.dataframe(df_plantilla2[['carril', 'profesor', 'nivel']], use_container_width=True)

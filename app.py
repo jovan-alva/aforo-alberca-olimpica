@@ -147,6 +147,7 @@ with tab1:
 
 with tab2:
     st.subheader("📊 Dashboard En Vivo")
+    
     # 1. Selector de Día independiente
     dia_dash = st.selectbox(
         "📅 Selecciona el Día a Consultar:", 
@@ -157,7 +158,7 @@ with tab2:
     try:
         conn = sqlite3.connect(DB_FILE)
 
-        # 2. Consulta SQL: Totales por espacio y por hora para el día seleccionado
+        # 2. Consulta SQL Corregida: Agrupa por hora y filtra por h.dia
         query = """
             SELECT 
                 h.hora,
@@ -168,15 +169,15 @@ with tab2:
             FROM registro_aforo r
             JOIN horario_oficial h ON r.horario_id = h.id
             JOIN espacios e ON r.espacio_id = e.id
-            WHERE r.horario_id = ?
-            GROUP BY h.id
-            ORDER BY h.id ASC;
+            WHERE h.dia = ?
+            GROUP BY h.hora
+            ORDER BY h.hora ASC;
         """
         
         df_dash = pd.read_sql_query(query, conn, params=(dia_dash,))
         conn.close()
 
-        if not df_dash.empty():
+        if not df_dash.empty and df_dash['total_hora'].sum() > 0:
             # ---------------------------------------------------------
             # 🏆 MÉTRICAS GENERALES (Totales por Espacio y Global)
             # ---------------------------------------------------------
@@ -203,10 +204,10 @@ with tab2:
             for index, row in df_dash.iterrows():
                 st.write(f"#### 🕐 Horario: {row['hora']}")
                 c1, c2, c3, c4 = st.columns(4)
-                c1.metric("Olímpica", f"{row['olimpica']}")
-                c2.metric("Calentamiento", f"{row['calentamiento']}")
-                c3.metric("Fosa", f"{row['fosa']}")
-                c4.metric("Total Hora", f"{row['total_hora']}")
+                c1.metric("Olímpica", f"{int(row['olimpica'])}")
+                c2.metric("Calentamiento", f"{int(row['calentamiento'])}")
+                c3.metric("Fosa", f"{int(row['fosa'])}")
+                c4.metric("Total Hora", f"{int(row['total_hora'])}")
                 st.caption("---")
 
         else:
@@ -214,7 +215,6 @@ with tab2:
 
     except Exception as e:
         st.error(f"⚠️ Error al cargar el dashboard: {e}")
-
 with tab3:
     st.subheader("📈 Tendencias Mensuales e Historico")
     st.info("⚠️ Esta sección está en desarrollo y se actualizará próximamente con análisis históricos y tendencias.")

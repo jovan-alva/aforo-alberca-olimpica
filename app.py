@@ -59,12 +59,12 @@ with tab1:
         cursor = conexion.cursor()
         
         query = """
-            INSERT INTO registro_aforo (guardavidas_registro, horario_id, asistentes)
-            VALUES (?, ?, ?);
+            INSERT INTO registro_aforo (guardavidas_registro, horario_id, asistentes, espacio_id)
+            VALUES (?, ?, ?, ?);
         """
         
         for item in lecturas_list:
-            cursor.execute(query, (guardavidas, item['horario_id'], item['asistentes']))
+            cursor.execute(query, (guardavidas, item['horario_id'], item['asistentes'], item['espacio_id']))
             
         conexion.commit()
         conexion.close()
@@ -98,7 +98,8 @@ with tab1:
                 
                 lecturas.append({
                     'horario_id': fila['id'],
-                    'asistentes': num_asistentes
+                    'asistentes': num_asistentes,
+                    'espacio_id': 1 if espacio_sel == "OLIMPICA" else 2 if espacio_sel == "CALENTAMIENTO" else 3
                 })
                 
         boton_guardar = st.form_submit_button(label="💾 Guardar Aforo del Turno", use_container_width=True)
@@ -146,7 +147,73 @@ with tab1:
 
 with tab2:
     st.subheader("📊 Dashboard En Vivo")
-    st.info("⚠️ Esta sección está en desarrollo y se actualizará próximamente con visualizaciones en tiempo real.")
+    # 1. Selector de Día independiente
+    dia_dash = st.selectbox(
+        "📅 Selecciona el Día a Consultar:", 
+        ["SABADO", "DOMINGO"], 
+        key="dia_dash"
+    )
+
+    try:
+        conn = sqlite3.connect(DB_FILE)
+
+        # 2. Consulta SQL: Totales por espacio y por hora para el día seleccionado
+        query = """
+            SELECT 
+                h.hora,
+                SUM(CASE WHEN e.espacio = 'OLIMPICA' THEN r.asistentes ELSE 0 END) AS olimpica,
+                SUM(CASE WHEN e.espacio = 'CALENTAMIENTO' THEN r.asistentes ELSE 0 END) AS calentamiento,
+                SUM(CASE WHEN e.espacio = 'FOSA' THEN r.asistentes ELSE 0 END) AS fosa,
+                SUM(r.asistentes) AS total_hora
+            FROM registro_aforo r
+            JOIN horario_oficial h ON r.horario_id = h.id
+            JOIN espacios e ON r.espacio_id = e.id
+            WHERE r.horario_id = ?
+            GROUP BY h.id
+            ORDER BY h.id ASC;
+        """
+        
+        df_dash = pd.read_sql_query(query, conn, params=(dia_dash,))
+        conn.close()
+
+        if not df_dash.empty():
+            # ---------------------------------------------------------
+            # 🏆 MÉTRICAS GENERALES (Totales por Espacio y Global)
+            # ---------------------------------------------------------
+            st.subheader(f"📈 Resumen Acumulado del {dia_dash}")
+            
+            total_olimpica = df_dash['olimpica'].sum()
+            total_calentamiento = df_dash['calentamiento'].sum()
+            total_fosa = df_dash['fosa'].sum()
+            total_general = df_dash['total_hora'].sum()
+
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("🏊‍♂️ Olímpica", f"{total_olimpica:,}")
+            m2.metric("🏊‍♀️ Calentamiento", f"{total_calentamiento:,}")
+            m3.metric("🪂 Fosa", f"{total_fosa:,}")
+            m4.metric("👥 TOTAL TRES ÁREAS", f"{total_general:,}")
+
+            st.divider()
+
+            # ---------------------------------------------------------
+            # ⏰ MÉTRICAS DESGLOSADAS POR HORA
+            # ---------------------------------------------------------
+            st.subheader("⏰ Desglose de Usuarios por Horario")
+
+            for index, row in df_dash.iterrows():
+                st.write(f"#### 🕐 Horario: {row['hora']}")
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("Olímpica", f"{row['olimpica']}")
+                c2.metric("Calentamiento", f"{row['calentamiento']}")
+                c3.metric("Fosa", f"{row['fosa']}")
+                c4.metric("Total Hora", f"{row['total_hora']}")
+                st.caption("---")
+
+        else:
+            st.info(f"ℹ️ No hay registros ingresados para el día {dia_dash}.")
+
+    except Exception as e:
+        st.error(f"⚠️ Error al cargar el dashboard: {e}")
 
 with tab3:
     st.subheader("📈 Tendencias Mensuales e Historico")

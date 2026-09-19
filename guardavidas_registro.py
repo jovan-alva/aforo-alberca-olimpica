@@ -13,11 +13,13 @@ def recrear_tabla_registro():
     cursor.execute("""
     CREATE TABLE registro_aforo (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        fecha_hora DATETIME DEFAULT CURRENT_TIMESTAMP,
+        fecha_hora DATE DEFAULT CURRENT_DATE,
         guardavidas_registro TEXT NOT NULL,
         horario_id INTEGER NOT NULL,
         asistentes INTEGER NOT NULL,
+        espacio_id INTEGER NOT NULL,
         FOREIGN KEY (horario_id) REFERENCES horario_oficial (id)
+        FOREIGN KEY (espacio_id) REFERENCES espacios (id)
     );
     """)
     

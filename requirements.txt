@@ -1,6 +1,2 @@
-<<<<<<< HEAD
 streamlit
-=======
-streamlit
->>>>>>> 55b0995 (Primer commit - Sistema de Aforo)
 pandas

@@ -117,16 +117,6 @@ with tab3:
     st.subheader("📈 Tendencias Mensuales e Histórico")
     st.info("⚠️ Esta sección está en desarrollo.")
     st.divider()
-    st.subheader("💾 Copia de Seguridad y Respaldo")
-    try:
-        with open(db.DB_FILE, "rb") as file:
-            st.download_button(
-                label="📥 Descargar Respaldo de Base de Datos (.db)",
-                data=file, file_name="aforo_alberca_respaldo.db",
-                mime="application/x-sqlite3", use_container_width=True
-            )
-    except FileNotFoundError:
-        st.error("⚠️ No se encontró la base de datos.")
 
 # ==========================================
 # PESTAÑA 4: GRUPOS ESPECÍFICOS

@@ -1,75 +1,148 @@
-import sqlite3
+import os
+import streamlit as st
 import pandas as pd
+from supabase import create_client
+import datetime as dt
 
-DB_FILE = "aforo_alberca.db"
+# 🔑 Endpoint y Clave de API de Supabase
+SUPABASE_URL = "https://kpcbglsvubwgposajgpa.supabase.co"
+SUPABASE_KEY = "sb_publishable_su6oLMMZwNuIXDwKfU6UbA_86edqxLT"
 
+@st.cache_resource
 def obtener_conexion():
-    """Establece una conexión con la base de datos SQLite."""
-    return sqlite3.connect(DB_FILE)
+    """Crea y devuelve la conexión con el cliente de Supabase."""
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
 
-def obtener_plantilla(dia,hora,espacio):
-    """obtiene la plantilla oficial de instructores y carriles"""
-    conexion = obtener_conexion()
-    query = """
-    SELECT id, carril, profesor, nivel
-    FROM horario_oficial
-    WHERE dia = ? AND hora = ? AND espacio = ?;
-    """
-    df = pd.read_sql_query(query, conexion, params=(dia, hora, espacio))
-    conexion.close()
-    return df
+def obtener_plantilla(dia, hora, espacio):
+    """Obtiene la plantilla oficial desde Supabase."""
+    supabase = obtener_conexion()
+    response = (
+        supabase.table("horario_oficial")
+        .select("id, carril, profesor, nivel")
+        .eq("dia", dia)
+        .eq("hora", hora)
+        .eq("espacio", espacio)
+        .execute()
+    )
+    return pd.DataFrame(response.data)
 
 def guardar_lecturas(guardavidas, lecturas_list):
-    """guarda los registros de conteo de aforo en la base de datos """
-    conexion = obtener_conexion()
-    cursor = conexion.cursor()
-    query = """
-    INSERT INTO registro_aforo (guardavidas_registro, horario_id, asistentes, espacio, espacio_id)
-    VALUES (?, ?, ?, ?, ?); """
+    """Guarda los registros de conteo en Supabase."""
+    supabase = obtener_conexion()
+    fecha_actual = str(dt.datetime.now().date())
+    registros = []
     for item in lecturas_list:
-        cursor.execute(query, (guardavidas, item['horario_id'], item['asistentes'], item['espacio'], item['espacio_id']))
-    conexion.commit()
-    conexion.close()
+        registros.append({
+            "guardavidas_registro": guardavidas,
+            "horario_id": int(item['horario_id']),
+            "asistentes": int(item['asistentes']),
+            "espacio_id": int(item['espacio_id']),
+            "fecha": fecha_actual
+        })
+        
+    response = supabase.table("registro_aforo").insert(registros).execute()
+    return response
 
 def obtener_historial():
-    """Consulta todo el historial de registros realizados con JOIN."""
-    conexion = obtener_conexion()
-    query = """
-        SELECT 
-            r.id AS folio,
-            r.fecha_hora AS "Fecha/Hora",
-            h.dia AS "Día",
-            h.hora AS "Hora Clase",
-            h.espacio AS "Espacio",
-            h.carril AS "Carril",
-            h.profesor AS "Profesor",
-            r.asistentes AS "Asistentes",
-            r.guardavidas_registro AS "Guardavidas"
-        FROM registro_aforo r
-        JOIN horario_oficial h ON r.horario_id = h.id
-        ORDER BY r.id DESC;
-    """
-    df = pd.read_sql_query(query, conexion)
-    conexion.close()
-    return df
+    """Consulta el historial de aforos registrados en Supabase."""
+    supabase = obtener_conexion()
+    response = (
+        supabase.table("registro_aforo")
+        .select("""
+            id,
+            fecha,
+            asistentes,
+            guardavidas_registro,
+            horario_oficial (
+                dia,
+                hora,
+                espacio,
+                carril,
+                profesor
+            )
+        """)
+        .order("id", desc=True)
+        .execute()
+    )
+    
+    data = response.data
+    if not data:
+        return pd.DataFrame()
+
+    filas = []
+    for r in data:
+        ho = r.get("horario_oficial") or {}
+        filas.append({
+            "folio": r.get("id"),
+            "Fecha": r.get("fecha"),
+            "Día": ho.get("dia"),
+            "Hora Clase": ho.get("hora"),
+            "Espacio": ho.get("espacio"),
+            "Carril": ho.get("carril"),
+            "Profesor": ho.get("profesor"),
+            "Asistentes": r.get("asistentes"),
+            "Guardavidas": r.get("guardavidas_registro")
+        })
+        
+    return pd.DataFrame(filas)
 
 def obtener_resumen_dashboard(dia):
-    """Obtiene el aforo agrupado por hora y espacio para un día específico."""
-    conexion = obtener_conexion()
-    query = """
-        SELECT 
-            h.hora,
-            SUM(CASE WHEN e.espacio = 'OLIMPICA' THEN r.asistentes ELSE 0 END) AS olimpica,
-            SUM(CASE WHEN e.espacio = 'CALENTAMIENTO' THEN r.asistentes ELSE 0 END) AS calentamiento,
-            SUM(CASE WHEN e.espacio = 'FOSA' THEN r.asistentes ELSE 0 END) AS fosa,
-            SUM(r.asistentes) AS total_hora
-        FROM registro_aforo r
-        JOIN horario_oficial h ON r.horario_id = h.id
-        JOIN espacios e ON r.espacio_id = e.id
-        WHERE h.dia = ?
-        GROUP BY h.hora
-        ORDER BY h.hora ASC;
-    """
-    df = pd.read_sql_query(query, conexion, params=(dia,))
-    conexion.close()
-    return df
+    """Obtiene el aforo de Supabase para generar el resumen por hora y espacio."""
+    supabase = obtener_conexion()
+    
+    response = (
+        supabase.table("registro_aforo")
+        .select("""
+            asistentes,
+            horario_oficial!inner (
+                dia,
+                hora
+            ),
+            espacios (
+                espacio
+            )
+        """)
+        .eq("horario_oficial.dia", dia)
+        .execute()
+    )
+    
+    data = response.data
+    if not data:
+        return pd.DataFrame()
+        
+    filas = []
+    for r in data:
+        ho = r.get("horario_oficial") or {}
+        esp = r.get("espacios") or {}
+        filas.append({
+            "hora": ho.get("hora"),
+            "espacio": esp.get("espacio"),
+            "asistentes": r.get("asistentes", 0)
+        })
+        
+    df = pd.DataFrame(filas)
+    if df.empty:
+        return pd.DataFrame()
+        
+    pivote = df.pivot_table(
+        index="hora", 
+        columns="espacio", 
+        values="asistentes", 
+        aggfunc="sum", 
+        fill_value=0
+    ).reset_index()
+    
+    for col in ['OLIMPICA', 'CALENTAMIENTO', 'FOSA']:
+        if col not in pivote.columns:
+            pivote[col] = 0
+            
+    pivote.rename(columns={
+        'OLIMPICA': 'olimpica',
+        'CALENTAMIENTO': 'calentamiento',
+        'FOSA': 'fosa'
+    }, inplace=True)
+    
+    pivote['total_hora'] = pivote['olimpica'] + pivote['calentamiento'] + pivote['fosa']
+    pivote.sort_values(by="hora", inplace=True)
+    
+    return pivote

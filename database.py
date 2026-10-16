@@ -86,8 +86,32 @@ def obtener_historial():
         
     return pd.DataFrame(filas)
 
-def obtener_resumen_dashboard(dia):
-    """Obtiene el aforo de Supabase para generar el resumen por hora y espacio."""
+def obtener_fechas_disponibles(dia):
+    """Obtiene la lista de fechas únicas registradas para un día de la semana (ej. SABADO)."""
+    supabase = obtener_conexion()
+    response = (
+        supabase.table("registro_aforo")
+        .select("""
+            fecha,
+            horario_oficial!inner (
+                dia
+            )
+        """)
+        .eq("horario_oficial.dia", dia)
+        .order("fecha", desc=True)
+        .execute()
+    )
+    data = response.data
+    if not data:
+        return []
+    
+    # Extraer fechas únicas manteniendo el orden cronológico descendente
+    fechas = list(dict.fromkeys([r.get("fecha") for r in data if r.get("fecha")]))
+    return fechas
+
+
+def obtener_resumen_dashboard_por_fecha(fecha):
+    """Obtiene el aforo de Supabase para una fecha específica."""
     supabase = obtener_conexion()
     
     response = (
@@ -103,7 +127,7 @@ def obtener_resumen_dashboard(dia):
                 espacio
             )
         """)
-        .eq("horario_oficial.dia", dia)
+        .eq("fecha", fecha)
         .execute()
     )
     
@@ -116,7 +140,6 @@ def obtener_resumen_dashboard(dia):
         ho = r.get("horario_oficial") or {}
         esp = r.get("espacios") or {}
         filas.append({
-            "fecha": r.get("fecha"),
             "hora": ho.get("hora"),
             "espacio": esp.get("espacio"),
             "asistentes": r.get("asistentes", 0)
@@ -127,7 +150,7 @@ def obtener_resumen_dashboard(dia):
         return pd.DataFrame()
         
     pivote = df.pivot_table(
-        index=["fecha", "hora"], 
+        index="hora", 
         columns="espacio", 
         values="asistentes", 
         aggfunc="sum", 

@@ -79,36 +79,50 @@ with tab1:
 # ==========================================
 with tab2:
     st.subheader("📊 Dashboard En Vivo")
-    dia_dash = st.selectbox("📅 Selecciona el Día a Consultar:", ["SABADO", "DOMINGO"], key="dia_dash")
-
-    try:
-        df_dash = db.obtener_resumen_dashboard(dia_dash)
-
-        if not df_dash.empty and df_dash['total_hora'].sum() > 0:
-            tot_olimpica, tot_calentamiento, tot_fosa, tot_general = an.calcular_kpis_dashboard(df_dash)
-
-            st.subheader(f"📈 Resumen Acumulado del {dia_dash}")
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("🏊‍♂️ Olímpica", f"{tot_olimpica:,}")
-            m2.metric("🏊‍♀️ Calentamiento", f"{tot_calentamiento:,}")
-            m3.metric("🪂 Fosa", f"{tot_fosa:,}")
-            m4.metric("👥 TOTAL TRES ÁREAS", f"{tot_general:,}")
-
-            st.divider()
-            st.subheader("⏰ Desglose de Usuarios por Horario")
-
-            for index, row in df_dash.iterrows():
-                st.write(f"#### 🕐 Horario: {row['hora']}")
-                c1, c2, c3, c4 = st.columns(4)
-                c1.metric("Olímpica", f"{int(row['olimpica'])}")
-                c2.metric("Calentamiento", f"{int(row['calentamiento'])}")
-                c3.metric("Fosa", f"{int(row['fosa'])}")
-                c4.metric("Total Hora", f"{int(row['total_hora'])}")
-                st.caption("---")
+    
+    col_dia, col_fecha = st.columns(2)
+    
+    with col_dia:
+        dia_dash = st.selectbox("📅 Selecciona el Día:", ["SABADO", "DOMINGO"], key="dia_dash")
+    
+    # Obtener las fechas disponibles registradas para ese día
+    fechas_disponibles = db.obtener_fechas_disponibles(dia_dash)
+    
+    with col_fecha:
+        if fechas_disponibles:
+            fecha_sel = st.selectbox("🗓️ Selecciona la Fecha:", fechas_disponibles, key="fecha_dash")
         else:
-            st.info(f"ℹ️ No hay registros ingresados para el día {dia_dash}.")
-    except Exception as e:
-        st.error(f"⚠️ Error al cargar el dashboard: {e}")
+            fecha_sel = None
+            st.warning("No hay fechas registradas para este día.")
+    
+    if fecha_sel:
+        try:
+            df_dash = db.obtener_resumen_dashboard_por_fecha(fecha_sel)
+            if not df_dash.empty and df_dash['total_hora'].sum() > 0:
+                tot_olimpica, tot_calentamiento, tot_fosa, tot_general = an.calcular_kpis_dashboard(df_dash)
+                st.subheader(f"📈 Resumen Acumulado del {dia_dash} ({fecha_sel})")
+                
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric("🏊 Olímpica", f"{tot_olimpica:,}")
+                m2.metric("🔥 Calentamiento", f"{tot_calentamiento:,}")
+                m3.metric("🪨 Fosa", f"{tot_fosa:,}")
+                m4.metric("👥 TOTAL TRES ÁREAS", f"{tot_general:,}")
+                
+                st.divider()
+                st.subheader("⏰ Desglose de Usuarios por Horario")
+                
+                for index, row in df_dash.iterrows():
+                    st.write(f"#### 🕒 Horario: {row['hora']}")
+                    c1, c2, c3, c4 = st.columns(4)
+                    c1.metric("Olímpica", f"{int(row['olimpica'])}")
+                    c2.metric("Calentamiento", f"{int(row['calentamiento'])}")
+                    c3.metric("Fosa", f"{int(row['fosa'])}")
+                    c4.metric("Total Hora", f"{int(row['total_hora'])}")
+                    st.caption("---")
+            else:
+                st.info(f"ℹ️ No hay registros ingresados para la fecha {fecha_sel}.")
+        except Exception as e:
+            st.error(f"❌ Error al cargar el dashboard: {e}")
 
 # ==========================================
 # PESTAÑA 3: HISTÓRICO Y RESPALDO

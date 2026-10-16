@@ -93,6 +93,7 @@ def obtener_resumen_dashboard(dia):
     response = (
         supabase.table("registro_aforo")
         .select("""
+            fecha,
             asistentes,
             horario_oficial!inner (
                 dia,
@@ -115,6 +116,7 @@ def obtener_resumen_dashboard(dia):
         ho = r.get("horario_oficial") or {}
         esp = r.get("espacios") or {}
         filas.append({
+            "fecha": r.get("fecha"),
             "hora": ho.get("hora"),
             "espacio": esp.get("espacio"),
             "asistentes": r.get("asistentes", 0)
@@ -125,7 +127,7 @@ def obtener_resumen_dashboard(dia):
         return pd.DataFrame()
         
     pivote = df.pivot_table(
-        index="hora", 
+        index=["fecha", "hora"], 
         columns="espacio", 
         values="asistentes", 
         aggfunc="sum", 
@@ -146,3 +148,47 @@ def obtener_resumen_dashboard(dia):
     pivote.sort_values(by="hora", inplace=True)
     
     return pivote
+
+def obtener_tendencias_mensuales():
+    """Obtiene todo el historial de aforos con fechas para análisis de tendencias."""
+    supabase = obtener_conexion()
+    
+    response = (
+        supabase.table("registro_aforo")
+        .select("""
+            id,
+            fecha,
+            asistentes,
+            guardavidas_registro,
+            horario_oficial (
+                dia,
+                hora,
+                espacio,
+                carril,
+                profesor
+            )
+        """)
+        .order("fecha", desc=False)
+        .execute()
+    )
+    
+    data = response.data
+    if not data:
+        return pd.DataFrame()
+
+    filas = []
+    for r in data:
+        ho = r.get("horario_oficial") or {}
+        filas.append({
+            "folio": r.get("id"),
+            "fecha": pd.to_datetime(r.get("fecha")),
+            "dia_semana": ho.get("dia"),
+            "hora": ho.get("hora"),
+            "espacio": ho.get("espacio"),
+            "carril": ho.get("carril"),
+            "profesor": ho.get("profesor"),
+            "asistentes": r.get("asistentes", 0),
+            "guardavidas": r.get("guardavidas_registro")
+        })
+        
+    return pd.DataFrame(filas)

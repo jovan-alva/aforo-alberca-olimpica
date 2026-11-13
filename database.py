@@ -30,6 +30,9 @@ def guardar_lecturas(guardavidas, lecturas_list):
     """Guarda los registros de conteo en Supabase."""
     supabase = obtener_conexion()
     fecha_actual = str(dt.datetime.now().date())
+
+    ids_horarios = [int(item['horario_id']) for item in lecturas_list]
+    supabase.table("registro_aforo").delete().eq("fecha", fecha_actual).in_("horario_id", ids_horarios).execute()
     registros = []
     for item in lecturas_list:
         registros.append({
@@ -215,3 +218,22 @@ def obtener_tendencias_mensuales():
         })
         
     return pd.DataFrame(filas)
+
+def cargar_formulario():
+    """Carga los datos ya guardados en el formulario por si guardaste erroeneamente y quieres corregirlo o agregar más datos."""
+    supabase = obtener_conexion()
+
+    response = (
+        supabase.table("registro_aforo")
+        .select("""
+            horario_id,
+            asistentes"""
+            )
+        .eq("fecha", str(dt.datetime.now().date()))
+        .execute()
+            )
+    data = response.data
+    if not data:
+        return {}
+    
+    return {fila['horario_id']: fila['asistentes'] for fila in data}

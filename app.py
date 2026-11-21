@@ -78,6 +78,9 @@ elif seccion == "Dashboard en Vivo":
     st.sidebar.subheader("Filtros de Consulta")
     dia_dash = st.sidebar.selectbox("📅 Día:", ["SABADO", "DOMINGO"], key="dia_dash")
 
+    horarios_disponibles = ["Todos","06:00:00", "07:00:00", "08:00:00", "09:00:00", "10:00:00", "12:00:00", "13:00:00"]
+    hora_dash = st.sidebar.selectbox("⏰ Hora:", horarios_disponibles, key="hora_dash")
+
     fechas_disponibles = db.obtener_fechas_disponibles(dia_dash)
     if fechas_disponibles:
         fecha_sel = st.sidebar.selectbox("🗓️ Fecha:", fechas_disponibles, key="fecha_dash")
@@ -91,18 +94,23 @@ elif seccion == "Dashboard en Vivo":
     if fecha_sel:
         try:
             df_dash = db.obtener_resumen_dashboard_por_fecha(fecha_sel)
+            df_dash = an.calcular_saturacion_horaria(df_dash)
+            df_hora= df_dash[df_dash['hora'] == hora_dash] if hora_dash != "Todos" else df_dash
+            
             if not df_dash.empty and df_dash['total_hora'].sum() > 0:
-                st.subheader("⏰ Desglose de Usuarios por Horario")
-                    
-                for index, row in df_dash.iterrows():
-                    st.write(f"#### 🕒 Horario: {row['hora']}")
-                    c1, c2, c3, c4 = st.columns(4)
-                    c1.metric("Olímpica", f"{int(row['olimpica'])}")
-                    c2.metric("Calentamiento", f"{int(row['calentamiento'])}")
-                    c3.metric("Fosa", f"{int(row['fosa'])}")
-                    c4.metric("Total Hora", f"{int(row['total_hora'])}")
-                    st.caption("---")
-
+                st.subheader(f"⏰ Aforo de Usuarios el {dia_dash} ({fecha_sel}) horario: {hora_dash}")
+                if not df_hora.empty:
+                    for index, row in df_hora.iterrows():
+                        st.write(f"#### 🕒 Horario: {row['hora']}")
+                        c1, c2, c3, c4 = st.columns(4)
+                        c1.metric(label="Olímpica", value=f"{int(row['olimpica'])}", delta=f"{row['pct_olimpica']}% ocupación", delta_color="inverse" if row['pct_olimpica'] >= 80 else "normal")
+                        c2.metric(label="Calentamiento", value=f"{int(row['calentamiento'])}", delta=f"{row['pct_calentamiento']}% ocupación", delta_color="inverse" if row['pct_calentamiento'] >= 80 else "normal")
+                        c3.metric(label="Fosa", value=f"{int(row['fosa'])}", delta=f"{row['pct_fosa']}% ocupación", delta_color="inverse" if row['pct_fosa'] >= 80 else "normal")
+                        c4.metric(label="Total Hora", value=f"{int(row['total_hora'])}", delta=f"{row['pct_total']}% ocupación", delta_color="inverse" if row['pct_total'] >= 80 else "normal")
+                        st.caption("---")
+                else:
+                    st.info(f"ℹ️ No hay registros ingresados para la fecha {fecha_sel} y hora {hora_dash}.")    
+                
                 tot_olimpica, tot_calentamiento, tot_fosa, tot_general = an.calcular_kpis_dashboard(df_dash)
                 st.subheader(f"📈 Resumen Acumulado del {dia_dash} ({fecha_sel})")
                     

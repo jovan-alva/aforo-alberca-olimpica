@@ -23,3 +23,14 @@ def calcular_saturacion(df):
         lambda x: "🔴 Saturado" if x >= 100 else "🟡 Alerta" if x >= 80 else "🟢 Normal")
     
     return df
+
+def calcular_saturacion_horaria(df):
+    if df.empty:
+        return df
+    df['pct_olimpica'] = ((df['olimpica'] / 160) * 100).round(1)
+    df['pct_calentamiento'] = ((df['calentamiento'] / 120) * 100).round(1)
+    df['pct_fosa'] = ((df['fosa'] / 60) * 100).round(1)
+    df['pct_total'] = ((df['total_hora'] / 340) * 100).round(1)
+    return df
+
+    
